@@ -1,0 +1,41 @@
+# ========================================================================
+# AirNav Requirements
+# 
+# This project requires Python 3.7+ and a working webcam.
+# Setup time: ~5-10 minutes on a fresh Windows machine
+# ========================================================================
+
+# ========================================================================
+# CORE DEPENDENCIES (Always required)
+# ========================================================================
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+pynput>=1.7.6
+
+# ========================================================================
+# FACE RECOGNITION (Optional but recommended)
+# ========================================================================
+# Face recognition uses dlib which requires Visual C++ build tools on Windows.
+# 
+# If you get a dlib build error:
+# Option 1: Install Visual Studio Build Tools (recommended)
+#   - Download: https://visualstudio.microsoft.com/downloads/
+#   - Select "Desktop development with C++"
+#   - Restart terminal after installation
+#   - Run: pip install -r requirements.txt
+#
+# Option 2: Use pre-built binaries (no build tools needed)
+#   - Run: pip install dlib-binary face-recognition
+#
+# Option 3: Skip face recognition (system will use simple face detection)
+#   - Comment out the lines below and run launcher.py
+#
+# face-recognition>=1.3.0
+
+# ========================================================================
+# OPTIONAL DEPENDENCIES
+# ========================================================================
+# Uncomment if needed:
+# SpeechRecognition>=3.10.0    # For voice commands (commented out by default)
+# PyAudio>=0.2.11              # For microphone input (commented out by default)
