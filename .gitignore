@@ -1,7 +1,73 @@
+# ========================================
 # Python
+# ========================================
 __pycache__/
-*.pyc
-venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# IDE specific
+# ========================================
+# Virtual Environments
+# ========================================
+.venv/
+venv/
+ENV/
+env/
+.virtualenv/
+
+# ========================================
+# IDEs and Editors
+# ========================================
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# ========================================
+# OS Files
+# ========================================
+Thumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# ========================================
+# AirNav Specific
+# ========================================
+# User-enrolled faces (privacy - don't commit)
+known_faces.pkl
+
+# Test and debug files
+test_*.py
+debug_*.py
+
+# Log files
+*.log
+
+# ========================================
+# Git
+# ========================================
+.git/

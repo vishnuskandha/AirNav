@@ -1,9 +1,17 @@
 
-## AirNav — Face unlock + Gesture control
+# AirNav
+
+[![Python](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/vishnuskandha/AirNav)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-red.svg)](https://opencv.org/)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10%2B-orange.svg)](https://mediapipe.dev/)
+
+**Hands-Free PC Control** — Control your computer using simple hand gestures captured by your webcam.
 
 ![AirNav Demo](./assetsgif/demo_gif.gif)
 
-AirNav combines facial recognition authentication with webcam-based hand-gesture mouse control. Unlock with your face, then control your PC hands-free using gestures.
+AirNav provides webcam-based hand-gesture mouse control for hands-free computer operation. Use intuitive hand gestures to move your cursor, click, and interact with your PC.
 
 Table of Contents
 - Features
@@ -11,7 +19,6 @@ Table of Contents
 - Installation
 - Usage
 - Configuration
-- Face Unlock Setup
 - Gesture reference
 - Troubleshooting
 - Contributing
@@ -21,9 +28,9 @@ Table of Contents
 
 ## Features
 
-- **Face unlock authentication** — secure access using facial recognition
 - Real-time hand-tracking for precise cursor movement
 - Gesture-driven left/right click, double-click and drag-and-drop
+- Works with any standard webcam
 - No microphone or audio input required
 - Lightweight — designed for low latency and simple configuration
 
@@ -31,20 +38,34 @@ Table of Contents
 
 ## Quick Start
 
-1. Install dependencies (see Installation).
-2. Enroll your face (one-time setup):
+**The easiest way to start AirNav:**
+
+**Option 1: PowerShell (Recommended for best visuals)**
+```powershell
+.\start.ps1
+```
+- Beautiful ANSI Shadow ASCII art with colors
+- Proper UTF-8 character display
+- Enhanced visual experience
+
+**Option 2: Batch File (Maximum compatibility)**
+```cmd
+start.bat
+```
+- Or double-click `start.bat` in Windows Explorer
+- Works in all terminals
+
+Both launchers will:
+- Check and install dependencies automatically
+- Launch the modern PiP window interface with gesture control
+
+**Manual start (alternative):**
 
 ```powershell
-python enroll_face.py
+python modern_app.py
 ```
 
-3. Run the app:
-
-```powershell
-python launcher.py
-```
-
-The launcher will first authenticate your face, then start the gesture module. You should see the face unlock window, then the webcam window for gestures.
+The modern app shows a floating Picture-in-Picture window with real-time gesture control.
 
 ---
 

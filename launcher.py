@@ -12,34 +12,21 @@ venv_python = project_root / ".venv" / "Scripts" / "python.exe"
 python_exe = str(venv_python) if venv_python.exists() else sys.executable
 
 print("=== AirNav Launcher ===\n")
+print("Launching Modern UI...")
 
-# Step 1: Face authentication
-print("Step 1: Face Authentication")
+# Set environment variables to suppress MediaPipe/TFLite warnings
+os.environ["GLOG_minloglevel"] = "3"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["ABSL_MIN_LOG_LEVEL"] = "2"
+
+# Run the modern app with stderr suppressed
 try:
-    from face_unlock import FaceUnlock
-    
-    unlock = FaceUnlock()
-    if not unlock.authenticate(timeout=30):
-        print("\n[DENIED] Authentication failed. Access denied.")
-        sys.exit(1)
-    
-    print("\n[OK] Authentication successful!\n")
-except ImportError as e:
-    print(f"Warning: Face recognition not available ({e})")
-    print("Skipping authentication...\n")
-except Exception as e:
-    print(f"Error during authentication: {e}")
-    sys.exit(1)
-
-# Step 2: Start gesture controls
-print("Step 2: Starting gesture controls...")
-
-# Suppress stderr/stdout from mouse_gestures subprocess (MediaPipe warnings)
-with open(os.devnull, 'w') as devnull:
-    subprocess.Popen(
-        [python_exe, str(here / "mouse_gestures.py")],
-        stdout=devnull,
-        stderr=devnull
+    subprocess.run(
+        [python_exe, str(here / "modern_app.py")],
+        check=True,
+        stderr=subprocess.DEVNULL  # Suppress all warnings
     )
-
-print("Gesture module started. Use your hands to control the mouse.")
+except subprocess.CalledProcessError as e:
+    print(f"Application exited with error: {e}")
+except KeyboardInterrupt:
+    print("\nLauncher stopped.")
