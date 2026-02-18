@@ -1,6 +1,20 @@
 
 # AirNav
 
+## v2 (Windows 11 + MediaPipe Tasks)
+
+This version of AirNav has been updated to:
+- Use MediaPipe Tasks HandLandmarker instead of the deprecated `mp.solutions.hands` API
+- Pin dependency versions in `requirements.txt` for reproducible installs
+- Prefer a local `.venv` with Python 3.11 via `start.ps1`
+- Use a local model file: `models/hand_landmarker.task`
+
+For most Windows 11 users, the recommended way to start is:
+```powershell
+./start.ps1
+```
+(or double-click `start.bat`).
+
 [![Python](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/vishnuskandha/AirNav)

@@ -9,6 +9,17 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "AirNav Launcher"
 
+# Always run from the script's directory so relative paths (like requirements.txt) work
+Set-Location -Path $PSScriptRoot
+
+# Prefer the local .venv Python if available
+$VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+if (Test-Path $VenvPython) {
+    $PythonCmd = $VenvPython
+} else {
+    $PythonCmd = "python"
+}
+
 # Clear screen
 Clear-Host
 
@@ -51,34 +62,32 @@ Write-Host ""
 Write-Host ""
 
 # ========================================
-# Check if Python is installed
+# Check if Python is installed and version is compatible
 # ========================================
 try {
-    $pyVer = python --version 2>&1
+    $pyVer = & $PythonCmd --version 2>&1
     if ($LASTEXITCODE -ne 0) { throw }
     Write-Host "[OK] $pyVer found" -ForegroundColor Green
-    
-    # Check for Python 3.13 incompatibility - HARD BLOCK
-    if ($pyVer -match "3\.13") {
-        Write-Host ""
-        Write-Host "[ERROR] Python 3.13 is NOT COMPATIBLE with AirNav!" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "MediaPipe (required for hand gestures) does not support Python 3.13." -ForegroundColor Yellow
-        Write-Host ""
+
+    # AirNav only supports Python 3.10 or 3.11 because of MediaPipe API
+    if ($pyVer -notmatch "3\.10" -and $pyVer -notmatch "3\.11") {
+        Write-Host "" 
+        Write-Host "[ERROR] Unsupported Python version detected: $pyVer" -ForegroundColor Red
+        Write-Host "" 
+        Write-Host "AirNav currently supports ONLY Python 3.10 or 3.11 due to MediaPipe compatibility." -ForegroundColor Yellow
+        Write-Host "" 
         Write-Host "SOLUTION:" -ForegroundColor Cyan
         Write-Host "1. Download and install Python 3.10 or 3.11" -ForegroundColor White
         Write-Host "   Python 3.10: https://www.python.org/downloads/release/python-31011/" -ForegroundColor White
         Write-Host "   Python 3.11: https://www.python.org/downloads/release/python-3119/" -ForegroundColor White
-        Write-Host ""
+        Write-Host "" 
         Write-Host "2. During installation, check 'Add Python to PATH'" -ForegroundColor White
-        Write-Host ""
+        Write-Host "" 
         Write-Host "3. After installation, run this script again" -ForegroundColor White
-        Write-Host ""
-        Write-Host "NOTE: You can have multiple Python versions installed." -ForegroundColor Cyan
-        Write-Host "To use Python 3.10/3.11 specifically, you can run:" -ForegroundColor Cyan
-        Write-Host "  py -3.10 -m pip install -r requirements.txt" -ForegroundColor Gray
-        Write-Host "  py -3.10 modern_app.py" -ForegroundColor Gray
-        Write-Host ""
+        Write-Host "" 
+        Write-Host "NOTE: You can have multiple Python versions installed side-by-side." -ForegroundColor Cyan
+        Write-Host "If you have both, ensure Python 3.10/3.11 is the default for this script." -ForegroundColor Cyan
+        Write-Host "" 
         Read-Host "Press Enter to exit"
         exit 1
     }
@@ -86,19 +95,19 @@ try {
 }
 catch {
     Write-Host "[ERROR] Python is not installed or not in PATH!" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Please install Python 3.10 or 3.11 from:"
-    Write-Host "https://www.python.org/downloads/"
-    Write-Host ""
-    Write-Host "Make sure to check 'Add Python to PATH' during installation."
-    Read-Host "Press Enter to exit"
-    exit 1
+    Write-Host "" 
+    Write-Host "Please install Python 3.10 or 3.11 from:" 
+    Write-Host "https://www.python.org/downloads/" 
+    Write-Host "" 
+    Write-Host "Make sure to check 'Add Python to PATH' during installation." 
+    Read-Host "Press Enter to exit" 
+    exit 1 
 }
 
 # ========================================
 # Validate required files exist
 # ========================================
-$requiredFiles = @("requirements.txt", "modern_app.py", "enroll_face.py")
+$requiredFiles = @("requirements.txt", "modern_app.py")
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path $file)) {
         Write-Host "[ERROR] $file not found!" -ForegroundColor Red
@@ -126,7 +135,18 @@ if (Test-Path $venvPath) {
     Write-Host ""
 }
 else {
-    Write-Host "[INFO] No virtual environment found, using system Python" -ForegroundColor Cyan
+    Write-Host "[INFO] No virtual environment found, creating .venv with current Python..." -ForegroundColor Cyan
+    try {
+        py -3.11 -m venv .venv
+        $VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+        if (Test-Path $VenvPython) { $PythonCmd = $VenvPython }
+        if ($LASTEXITCODE -ne 0) { throw }
+        & $venvPath
+        Write-Host "[OK] Virtual environment created and activated" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "[WARNING] Failed to create/activate virtual environment, falling back to system Python" -ForegroundColor Yellow
+    }
     Write-Host ""
 }
 
@@ -135,7 +155,7 @@ else {
 # ========================================
 Write-Host "Checking dependencies..."
 try {
-    python -c "import cv2, mediapipe, numpy, pynput" 2>&1 | Out-Null
+    & $PythonCmd -c "import cv2, mediapipe, numpy, pynput" 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw }
     Write-Host "[OK] All dependencies are installed" -ForegroundColor Green
     Write-Host ""
@@ -144,7 +164,7 @@ catch {
     Write-Host "[WARNING] Some dependencies are missing!" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Installing required packages..."
-    pip install -r requirements.txt
+    & $PythonCmd -m pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
         Write-Host "[ERROR] Failed to install dependencies." -ForegroundColor Red
@@ -159,7 +179,7 @@ catch {
 # ========================================
 # Check if face is enrolled
 # ========================================
-if (-not (Test-Path "known_faces.pkl")) {
+if ($false -and -not (Test-Path "known_faces.pkl")) {
     Write-Host "========================================" -ForegroundColor Yellow
     Write-Host "   FIRST-TIME SETUP" -ForegroundColor Yellow
     Write-Host "========================================" -ForegroundColor Yellow
@@ -210,23 +230,23 @@ Write-Host ""
 
 # Check if PyQt5 is available for modern UI
 try {
-    python -c "import PyQt5" 2>&1 | Out-Null
+    & $PythonCmd -c "import PyQt5" 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw }
 }
 catch {
     Write-Host "[WARNING] PyQt5 not found, installing..." -ForegroundColor Yellow
-    pip install PyQt5
+    & $PythonCmd -m pip install PyQt5
 }
 
 # Launch modern app with fallback
-python modern_app.py
+& $PythonCmd modern_app.py
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "[WARNING] Modern app failed to start" -ForegroundColor Yellow
     Write-Host "Trying alternative launcher..."
     Write-Host ""
     if (Test-Path "launcher.py") {
-        python launcher.py
+        & $PythonCmd launcher.py
     }
     else {
         Write-Host "[ERROR] No alternative launcher found" -ForegroundColor Red
