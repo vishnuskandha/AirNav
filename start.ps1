@@ -1,54 +1,42 @@
 # ========================================
-# AirNav - PowerShell Launcher
+# AirNav v2 - PowerShell Launcher
 # ========================================
-# This PowerShell script handles UTF-8 characters properly
-# and displays the ANSI Shadow ASCII art correctly
+# Fully automated: detects/installs Python 3.11,
+# creates .venv, installs deps, downloads model,
+# and launches AirNav. Works on fresh Windows 11.
 # ========================================
 
 # Set console to UTF-8 for proper character display
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "AirNav Launcher"
+$Host.UI.RawUI.WindowTitle = "AirNav v2 Launcher"
 
-# Always run from the script's directory so relative paths (like requirements.txt) work
+# Always run from the script's directory
 Set-Location -Path $PSScriptRoot
-
-# Prefer the local .venv Python if available
-$VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
-if (Test-Path $VenvPython) {
-    $PythonCmd = $VenvPython
-} else {
-    $PythonCmd = "python"
-}
 
 # Clear screen
 Clear-Host
 
-# ANSI Shadow ASCII Art for AIRNAV (Base64 encoded to avoid encoding issues)
+# ========================================
+# Banner
+# ========================================
 $BannerBase64 = "CiDilojilojilojilojilojilZcg4paI4paI4pWX4paI4paI4paI4paI4paI4paI4pWXIOKWiOKWiOKWiOKVlyAgIOKWiOKWiOKVlyDilojilojilojilojilojilZcg4paI4paI4pWXICAg4paI4paI4pWXCuKWiOKWiOKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKVkeKWiOKWiOKVlOKVkOKVkOKWiOKWiOKVl+KWiOKWiOKWiOKWiOKVlyAg4paI4paI4pWR4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4paI4pWRICAg4paI4paI4pWRCuKWiOKWiOKWiOKWiOKWiOKWiOKWiOKVkeKWiOKWiOKVkeKWiOKWiOKWiOKWiOKWiOKWiOKVlOKVneKWiOKWiOKVlOKWiOKWiOKVlyDilojilojilZHilojilojilojilojilojilojilojilZHilojilojilZEgICDilojilojilZEK4paI4paI4pWU4pWQ4pWQ4paI4paI4pWR4paI4paI4pWR4paI4paI4pWU4pWQ4pWQ4paI4paI4pWX4paI4paI4pWR4pWa4paI4paI4pWX4paI4paI4pWR4paI4paI4pWU4pWQ4pWQ4paI4paI4pWR4pWa4paI4paI4pWXIOKWiOKWiOKVlOKVnQrilojilojilZEgIOKWiOKWiOKVkeKWiOKWiOKVkeKWiOKWiOKVkSAg4paI4paI4pWR4paI4paI4pWRIOKVmuKWiOKWiOKWiOKWiOKVkeKWiOKWiOKVkSAg4paI4paI4pWRIOKVmuKWiOKWiOKWiOKWiOKVlOKVnSAK4pWa4pWQ4pWdICDilZrilZDilZ3ilZrilZDilZ3ilZrilZDilZ0gIOKVmuKVkOKVneKVmuKVkOKVnSAg4pWa4pWQ4pWQ4pWQ4pWd4pWa4pWQ4pWdICDilZrilZDilZ0gIOKVmuKVkOKVkOKVkOKVnSAK"
 
-# Decode Base64 to string
 $BannerBytes = [System.Convert]::FromBase64String($BannerBase64)
 $Banner = [System.Text.Encoding]::UTF8.GetString($BannerBytes)
 
 Write-Host ""
 Write-Host ""
 
-# Display each line with character-by-character coloring using integer values
-# This avoids "Unexpected token" errors from special characters in the script code
 foreach ($line in $Banner -split "`n") {
     Write-Host "           " -NoNewline
     foreach ($char in $line.ToCharArray()) {
         $val = [int]$char
-        
-        # Solid block characters (█ = 9608) in Red
         if ($val -eq 9608) {
             Write-Host $char -ForegroundColor Red -NoNewline
         }
-        # Box-drawing characters (Range 9550-9580 approx) in Cyan
         elseif ($val -ge 9550 -and $val -le 9580) {
             Write-Host $char -ForegroundColor Cyan -NoNewline
         }
-        # Regular characters (spaces, newlines)
         else {
             Write-Host $char -ForegroundColor DarkGray -NoNewline
         }
@@ -58,54 +46,182 @@ foreach ($line in $Banner -split "`n") {
 
 Write-Host ""
 Write-Host "              Face Recognition + Hand Gesture Control System" -ForegroundColor Yellow
+Write-Host "                                v2.0.0" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host ""
 
 # ========================================
-# Check if Python is installed and version is compatible
+# STEP 1: Find or install Python 3.11
 # ========================================
-try {
-    $pyVer = & $PythonCmd --version 2>&1
-    if ($LASTEXITCODE -ne 0) { throw }
-    Write-Host "[OK] $pyVer found" -ForegroundColor Green
+$VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$PythonCmd = $null
 
-    # AirNav only supports Python 3.10 or 3.11 because of MediaPipe API
-    if ($pyVer -notmatch "3\.10" -and $pyVer -notmatch "3\.11") {
-        Write-Host "" 
-        Write-Host "[ERROR] Unsupported Python version detected: $pyVer" -ForegroundColor Red
-        Write-Host "" 
-        Write-Host "AirNav currently supports ONLY Python 3.10 or 3.11 due to MediaPipe compatibility." -ForegroundColor Yellow
-        Write-Host "" 
-        Write-Host "SOLUTION:" -ForegroundColor Cyan
-        Write-Host "1. Download and install Python 3.10 or 3.11" -ForegroundColor White
-        Write-Host "   Python 3.10: https://www.python.org/downloads/release/python-31011/" -ForegroundColor White
-        Write-Host "   Python 3.11: https://www.python.org/downloads/release/python-3119/" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "2. During installation, check 'Add Python to PATH'" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "3. After installation, run this script again" -ForegroundColor White
-        Write-Host "" 
-        Write-Host "NOTE: You can have multiple Python versions installed side-by-side." -ForegroundColor Cyan
-        Write-Host "If you have both, ensure Python 3.10/3.11 is the default for this script." -ForegroundColor Cyan
-        Write-Host "" 
+# 1a) Check if .venv already exists with Python 3.11
+if (Test-Path $VenvPython) {
+    $venvVer = & $VenvPython --version 2>&1
+    if ($venvVer -match "3\.11") {
+        $PythonCmd = $VenvPython
+        Write-Host "[OK] Python 3.11 found in .venv" -ForegroundColor Green
+    }
+}
+
+# 1b) Search common Python 3.11 locations
+if (-not $PythonCmd) {
+    $searchPaths = @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"),
+        "C:\Python311\python.exe",
+        "C:\Program Files\Python311\python.exe",
+        "C:\Program Files (x86)\Python311\python.exe"
+    )
+
+    foreach ($path in $searchPaths) {
+        if (Test-Path $path) {
+            $ver = & $path --version 2>&1
+            if ($ver -match "3\.11") {
+                $PythonCmd = $path
+                Write-Host "[OK] $ver found at $path" -ForegroundColor Green
+                break
+            }
+        }
+    }
+}
+
+# 1c) Try py launcher for 3.11
+if (-not $PythonCmd) {
+    try {
+        $ver = py -3.11 --version 2>&1
+        if ($LASTEXITCODE -eq 0 -and $ver -match "3\.11") {
+            # Get the actual path from py launcher
+            $pyPath = py -3.11 -c "import sys; print(sys.executable)" 2>&1
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $pyPath)) {
+                $PythonCmd = $pyPath
+            } else {
+                $PythonCmd = "py"  # fallback to using py command
+            }
+            Write-Host "[OK] $ver found via Python Launcher" -ForegroundColor Green
+        }
+    }
+    catch {
+        # py launcher not available
+    }
+}
+
+# 1d) Python 3.11 not found — auto-install via winget
+if (-not $PythonCmd) {
+    Write-Host "[INFO] Python 3.11 not found on this system." -ForegroundColor Yellow
+    Write-Host ""
+
+    # Check if winget is available
+    $hasWinget = $false
+    try {
+        winget --version 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) { $hasWinget = $true }
+    }
+    catch {}
+
+    if ($hasWinget) {
+        Write-Host "[INFO] Installing Python 3.11 via winget (this may take a minute)..." -ForegroundColor Cyan
+        Write-Host ""
+        winget install -e --id Python.Python.3.11 -h --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[ERROR] Failed to install Python 3.11 via winget." -ForegroundColor Red
+            Write-Host "Please install Python 3.11 manually from: https://www.python.org/downloads/release/python-3119/" -ForegroundColor Yellow
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+
+        # Refresh PATH so we can find the newly installed Python
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+
+        # Find the freshly installed Python 3.11
+        $freshPaths = @(
+            (Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"),
+            "C:\Python311\python.exe",
+            "C:\Program Files\Python311\python.exe"
+        )
+        foreach ($path in $freshPaths) {
+            if (Test-Path $path) {
+                $PythonCmd = $path
+                break
+            }
+        }
+
+        if (-not $PythonCmd) {
+            # Try py launcher after install
+            try {
+                $ver = py -3.11 --version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $pyPath = py -3.11 -c "import sys; print(sys.executable)" 2>&1
+                    if (Test-Path $pyPath) { $PythonCmd = $pyPath }
+                }
+            }
+            catch {}
+        }
+
+        if ($PythonCmd) {
+            $ver = & $PythonCmd --version 2>&1
+            Write-Host "[OK] $ver installed successfully!" -ForegroundColor Green
+        }
+        else {
+            Write-Host "[ERROR] Python 3.11 was installed but could not be located." -ForegroundColor Red
+            Write-Host "Please restart your terminal and run start.bat again." -ForegroundColor Yellow
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+    }
+    else {
+        # No winget — manual install required
+        Write-Host "[ERROR] Python 3.11 is required but not found, and winget is not available." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Please install Python 3.11 manually:" -ForegroundColor Yellow
+        Write-Host "  https://www.python.org/downloads/release/python-3119/" -ForegroundColor White
+        Write-Host ""
+        Write-Host "During installation, check 'Add Python to PATH'." -ForegroundColor White
+        Write-Host "After installation, run this script again." -ForegroundColor White
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+}
+
+Write-Host ""
+
+# ========================================
+# STEP 2: Create / activate virtual environment
+# ========================================
+$venvPath = ".venv\Scripts\Activate.ps1"
+if (Test-Path $venvPath) {
+    Write-Host "[INFO] Virtual environment detected" -ForegroundColor Cyan
+    Write-Host "Activating virtual environment..."
+    try {
+        & $venvPath
+        $PythonCmd = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+        Write-Host "[OK] Virtual environment activated" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "[WARNING] Failed to activate virtual environment" -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+else {
+    Write-Host "[INFO] Creating virtual environment with Python 3.11..." -ForegroundColor Cyan
+    try {
+        & $PythonCmd -m venv .venv
+        if ($LASTEXITCODE -ne 0) { throw "venv creation failed" }
+        & $venvPath
+        $PythonCmd = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+        Write-Host "[OK] Virtual environment created and activated" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "[ERROR] Failed to create virtual environment." -ForegroundColor Red
+        Write-Host "Try manually: $PythonCmd -m venv .venv"
         Read-Host "Press Enter to exit"
         exit 1
     }
     Write-Host ""
 }
-catch {
-    Write-Host "[ERROR] Python is not installed or not in PATH!" -ForegroundColor Red
-    Write-Host "" 
-    Write-Host "Please install Python 3.10 or 3.11 from:" 
-    Write-Host "https://www.python.org/downloads/" 
-    Write-Host "" 
-    Write-Host "Make sure to check 'Add Python to PATH' during installation." 
-    Read-Host "Press Enter to exit" 
-    exit 1 
-}
 
 # ========================================
-# Validate required files exist
+# STEP 3: Validate required files
 # ========================================
 $requiredFiles = @("requirements.txt", "modern_app.py")
 foreach ($file in $requiredFiles) {
@@ -118,40 +234,38 @@ foreach ($file in $requiredFiles) {
 }
 
 # ========================================
-# Check for virtual environment
+# STEP 4: Download model if missing
 # ========================================
-$venvPath = ".venv\Scripts\Activate.ps1"
-if (Test-Path $venvPath) {
-    Write-Host "[INFO] Virtual environment detected" -ForegroundColor Cyan
-    Write-Host "Activating virtual environment..."
+$modelPath = Join-Path $PSScriptRoot "models\hand_landmarker.task"
+if (-not (Test-Path $modelPath)) {
+    Write-Host "[INFO] Downloading MediaPipe hand_landmarker model..." -ForegroundColor Cyan
+    $modelDir = Join-Path $PSScriptRoot "models"
+    if (-not (Test-Path $modelDir)) {
+        New-Item -ItemType Directory -Path $modelDir -Force | Out-Null
+    }
     try {
-        & $venvPath
-        Write-Host "[OK] Virtual environment activated" -ForegroundColor Green
+        $modelUrl = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
+        Invoke-WebRequest -Uri $modelUrl -OutFile $modelPath -UseBasicParsing
+        if (Test-Path $modelPath) {
+            Write-Host "[OK] Model downloaded successfully" -ForegroundColor Green
+        }
+        else {
+            throw "Download completed but file not found"
+        }
     }
     catch {
-        Write-Host "[WARNING] Failed to activate virtual environment" -ForegroundColor Yellow
-        Write-Host "Using system Python instead..."
-    }
-    Write-Host ""
-}
-else {
-    Write-Host "[INFO] No virtual environment found, creating .venv with current Python..." -ForegroundColor Cyan
-    try {
-        py -3.11 -m venv .venv
-        $VenvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
-        if (Test-Path $VenvPython) { $PythonCmd = $VenvPython }
-        if ($LASTEXITCODE -ne 0) { throw }
-        & $venvPath
-        Write-Host "[OK] Virtual environment created and activated" -ForegroundColor Green
-    }
-    catch {
-        Write-Host "[WARNING] Failed to create/activate virtual environment, falling back to system Python" -ForegroundColor Yellow
+        Write-Host "[ERROR] Failed to download hand_landmarker.task model." -ForegroundColor Red
+        Write-Host "Please download manually from:" -ForegroundColor Yellow
+        Write-Host "  https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task" -ForegroundColor White
+        Write-Host "Place it in: models\hand_landmarker.task" -ForegroundColor White
+        Read-Host "Press Enter to exit"
+        exit 1
     }
     Write-Host ""
 }
 
 # ========================================
-# Check if dependencies are installed
+# STEP 5: Install dependencies
 # ========================================
 Write-Host "Checking dependencies..."
 try {
@@ -163,12 +277,13 @@ try {
 catch {
     Write-Host "[WARNING] Some dependencies are missing!" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Installing required packages..."
+    Write-Host "Installing required packages (this may take a few minutes)..."
+    & $PythonCmd -m pip install --upgrade pip 2>&1 | Out-Null
     & $PythonCmd -m pip install -r requirements.txt
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""
         Write-Host "[ERROR] Failed to install dependencies." -ForegroundColor Red
-        Write-Host "Please run manually: pip install -r requirements.txt"
+        Write-Host "Please run manually: .venv\Scripts\pip install -r requirements.txt"
         Read-Host "Press Enter to exit"
         exit 1
     }
@@ -177,47 +292,23 @@ catch {
 }
 
 # ========================================
-# Check if face is enrolled
+# STEP 6: Check PyQt5
 # ========================================
-if ($false -and -not (Test-Path "known_faces.pkl")) {
-    Write-Host "========================================" -ForegroundColor Yellow
-    Write-Host "   FIRST-TIME SETUP" -ForegroundColor Yellow
-    Write-Host "========================================" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "No enrolled faces found."
-    Write-Host "You need to enroll your face before using AirNav."
-    Write-Host ""
-    Write-Host "Instructions:"
-    Write-Host "1. Position your face in front of the camera"
-    Write-Host "2. Press SPACE to capture"
-    Write-Host "3. ESC to cancel"
-    Write-Host ""
-    Write-Host "Starting face enrollment..."
-    Write-Host ""
-    
-    python enroll_face.py
-    
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ""
-        Write-Host "[ERROR] Face enrollment failed or cancelled." -ForegroundColor Red
-        Write-Host "Please try again."
-        Read-Host "Press Enter to exit"
-        exit 1
-    }
-    
-    Write-Host ""
-    Write-Host "[OK] Face enrolled successfully!" -ForegroundColor Green
-    Write-Host ""
+try {
+    & $PythonCmd -c "import PyQt5" 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw }
+}
+catch {
+    Write-Host "[WARNING] PyQt5 not found, installing..." -ForegroundColor Yellow
+    & $PythonCmd -m pip install PyQt5
 }
 
 # ========================================
-# Launch the application
+# STEP 7: Launch AirNav
 # ========================================
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   STARTING AIRNAV" -ForegroundColor Cyan
+Write-Host "   STARTING AIRNAV v2" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Launching modern UI with PiP window..."
 Write-Host ""
 Write-Host "Controls:" -ForegroundColor Yellow
 Write-Host "- Left hand: Move cursor with index finger"
@@ -227,16 +318,6 @@ Write-Host "- Drag: Hold pinch for 1 second"
 Write-Host ""
 Write-Host "Press Ctrl+C in this window to stop the application" -ForegroundColor Red
 Write-Host ""
-
-# Check if PyQt5 is available for modern UI
-try {
-    & $PythonCmd -c "import PyQt5" 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw }
-}
-catch {
-    Write-Host "[WARNING] PyQt5 not found, installing..." -ForegroundColor Yellow
-    & $PythonCmd -m pip install PyQt5
-}
 
 # Launch modern app with fallback
 & $PythonCmd modern_app.py
