@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Resolve paths
 here = Path(__file__).resolve().parent
-project_root = here.parent  # AirNav/
+project_root = here  # AirNav/
 venv_python = project_root / ".venv" / "Scripts" / "python.exe"
 
 # Prefer the project's venv Python if it exists; fall back to current python

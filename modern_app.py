@@ -32,6 +32,8 @@ class VideoThread(QThread):
     def run(self):
         # Open camera with optimized resolution (1280×720)
         cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            return
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         cap.set(cv2.CAP_PROP_FPS, 30)
@@ -240,7 +242,7 @@ class FloatingWindow(QMainWindow):
         delta = global_pos - self.resize_start_pos
         geo = self.resize_start_geometry
         
-        new_geo = geo
+        new_geo = QRectF(geo).toRect()
         
         if 'right' in self.resize_edge:
             new_geo.setRight(geo.right() + delta.x())
@@ -294,6 +296,11 @@ class FloatingWindow(QMainWindow):
     def close_app(self):
         self.thread.stop()
         self.close()
+
+    def closeEvent(self, event):
+        if self.thread.isRunning():
+            self.thread.stop()
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

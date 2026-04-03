@@ -2,6 +2,7 @@ import os
 import sys
 import io
 import time
+import ctypes
 from typing import Optional
 
 import cv2
@@ -47,7 +48,6 @@ class GestureEngine:
 
         # Timing variables
         self.last_double_click_time = 0.0
-        self.last_click_time = 0.0
         self.click_delay = 0.3
 
         # Dragging state
@@ -55,10 +55,11 @@ class GestureEngine:
         self.pinch_start_time = 0.0
         self.drag_release_time = 0.0
         self.DRAG_HOLD_TIME = 0.8
+        self.left_pinch_active = False
+        self.left_click_consumed = False
 
         # Config
-        self.SCREEN_WIDTH = 1920
-        self.SCREEN_HEIGHT = 1080
+        self.SCREEN_WIDTH, self.SCREEN_HEIGHT = self._get_screen_size()
         self.LEFT_CLICK_THRESHOLD = 0.05
         self.RIGHT_CLICK_THRESHOLD = 0.05
 
@@ -102,6 +103,28 @@ class GestureEngine:
         # Use the canonical hand connections defined by the Tasks API
         from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarksConnections
         self.connections = HandLandmarksConnections.HAND_CONNECTIONS
+
+    def _get_screen_size(self):
+        """Get current screen size with Windows-first fallback."""
+        try:
+            if os.name == "nt":
+                return (
+                    ctypes.windll.user32.GetSystemMetrics(0),
+                    ctypes.windll.user32.GetSystemMetrics(1),
+                )
+        except Exception:
+            pass
+
+        try:
+            import tkinter as tk
+            root = tk.Tk()
+            root.withdraw()
+            width = root.winfo_screenwidth()
+            height = root.winfo_screenheight()
+            root.destroy()
+            return width, height
+        except Exception:
+            return 1920, 1080
 
     # ------------------------------------------------------------------
     # Core per-frame processing
@@ -203,17 +226,33 @@ class GestureEngine:
 
         current_time = time.time()
 
-        # Left Click (thumb + index)
-        if dist_index_thumb < self.LEFT_CLICK_THRESHOLD and self.left_click_ready:
-            if current_time - self.last_double_click_time < self.click_delay:
-                self.mouse.click(Button.left, 2)
-                self.last_double_click_time = 0
+        # Left pinch gesture state (click or drag depending on hold time)
+        if dist_index_thumb < self.LEFT_CLICK_THRESHOLD:
+            if not self.left_pinch_active:
+                self.left_pinch_active = True
+                self.pinch_start_time = current_time
+                self.left_click_consumed = False
+
+            held_time = current_time - self.pinch_start_time
+            if held_time >= self.DRAG_HOLD_TIME and not self.dragging:
+                self.mouse.press(Button.left)
+                self.dragging = True
+                self.left_click_consumed = True
+        else:
+            if self.left_pinch_active and not self.left_click_consumed and self.left_click_ready:
+                if current_time - self.last_double_click_time < self.click_delay:
+                    self.mouse.click(Button.left, 2)
+                    self.last_double_click_time = 0
+                else:
+                    self.mouse.click(Button.left, 1)
+                    self.last_double_click_time = current_time
+                self.left_click_ready = False
             else:
-                self.mouse.click(Button.left, 1)
-                self.last_double_click_time = current_time
-            self.left_click_ready = False
-        elif dist_index_thumb >= self.LEFT_CLICK_THRESHOLD:
-            self.left_click_ready = True
+                self.left_click_ready = True
+
+            self.left_pinch_active = False
+            self.left_click_consumed = False
+            self.pinch_start_time = 0
 
         # Right Click (thumb + middle)
         if dist_middle_thumb < self.RIGHT_CLICK_THRESHOLD and self.right_click_ready:
@@ -223,17 +262,8 @@ class GestureEngine:
         elif dist_middle_thumb >= self.RIGHT_CLICK_THRESHOLD:
             self.right_click_ready = True
 
-        # Drag (hold thumb + index)
-        if dist_index_thumb < self.LEFT_CLICK_THRESHOLD:
-            if self.pinch_start_time == 0:
-                self.pinch_start_time = current_time
-            held_time = current_time - self.pinch_start_time
-            if held_time >= self.DRAG_HOLD_TIME and not self.dragging:
-                self.mouse.press(Button.left)
-                self.dragging = True
-        else:
-            self.pinch_start_time = 0
-            if self.dragging:
-                self.mouse.release(Button.left)
-                self.dragging = False
-                self.drag_release_time = time.time()
+        # End drag on release
+        if dist_index_thumb >= self.LEFT_CLICK_THRESHOLD and self.dragging:
+            self.mouse.release(Button.left)
+            self.dragging = False
+            self.drag_release_time = current_time
