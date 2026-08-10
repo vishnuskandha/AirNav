@@ -31,9 +31,10 @@ Feature requests are welcome! Please:
 2. **Make your changes** following our code style guidelines (below)
 
 3. **Test your changes**:
+   - Ensure the app compiles: `python -m py_compile gesture_engine.py launcher.py modern_app.py`
    - Ensure the app runs without errors
    - Test on your webcam hardware
-   - Verify face enrollment and gesture recognition still work
+   - Verify hand tracking and gesture recognition still work
 
 4. **Update documentation**:
    - Update README.md if you added features or changed usage
@@ -77,9 +78,9 @@ def calculate_distance(point1: tuple, point2: tuple) -> float:
 ## Testing Requirements
 
 Before submitting a PR, ensure:
+- [ ] All Python files compile (`python -m py_compile gesture_engine.py launcher.py modern_app.py`)
 - [ ] App starts without errors (`python modern_app.py`)
-- [ ] Face enrollment works (`python enroll_face.py`)
-- [ ] Face authentication works
+- [ ] The `models/hand_landmarker.task` model is present (see `start.ps1` to download it)
 - [ ] Gesture tracking is responsive
 - [ ] No new warnings or errors in console
 - [ ] Works on Windows (Linux/macOS if you have access)
@@ -106,9 +107,11 @@ Before submitting a PR, ensure:
 
 4. **Test your setup**:
    ```bash
-   python enroll_face.py  # Enroll your face
    python modern_app.py   # Launch the app
    ```
+
+   On Windows you can use `.\start.ps1` instead, which sets up the venv,
+   installs dependencies, and downloads the model automatically.
 
 ## Communication
 
@@ -122,4 +125,4 @@ By contributing to AirNav, you agree that your contributions will be licensed un
 
 ---
 
-Thank you for contributing to AirNav! 🚀
+Thank you for contributing to AirNav!

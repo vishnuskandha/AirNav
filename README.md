@@ -1,377 +1,135 @@
-
 # AirNav
 
-## v2 (Windows 11 + MediaPipe Tasks)
-
-This version of AirNav has been updated to:
-- Use MediaPipe Tasks HandLandmarker instead of the deprecated `mp.solutions.hands` API
-- Pin dependency versions in `requirements.txt` for reproducible installs
-- Prefer a local `.venv` with Python 3.11 via `start.ps1`
-- Use a local model file: `models/hand_landmarker.task`
-
-For most Windows 11 users, the recommended way to start is:
-```powershell
-./start.ps1
-```
-(or double-click `start.bat`).
-
-[![Python](https://img.shields.io/badge/Python-3.7%2B-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+[![CI](https://github.com/vishnuskandha/AirNav/actions/workflows/ci.yml/badge.svg)](https://github.com/vishnuskandha/AirNav/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/vishnuskandha/AirNav)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.8%2B-red.svg)](https://opencv.org/)
-[![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10%2B-orange.svg)](https://mediapipe.dev/)
 
-**Hands-Free PC Control** — Control your computer using simple hand gestures captured by your webcam.
-
-![AirNav Demo](./assetsgif/demo_gif.gif)
-
-AirNav provides webcam-based hand-gesture mouse control for hands-free computer operation. Use intuitive hand gestures to move your cursor, click, and interact with your PC.
-
-Table of Contents
-- Features
-- Quick Start
-- Installation
-- Usage
-- Configuration
-- Gesture reference
-- Troubleshooting
-- Contributing
-- License & Contact
-
----
+Hands-free PC control: move your cursor, click, double-click, and drag using
+hand gestures captured by your webcam. AirNav uses MediaPipe Tasks
+HandLandmarker for hand tracking and a frameless picture-in-picture overlay
+built with PyQt5.
 
 ## Features
 
-- Real-time hand-tracking for precise cursor movement
-- Gesture-driven left/right click, double-click and drag-and-drop
-- Works with any standard webcam
-- No microphone or audio input required
-- Lightweight — designed for low latency and simple configuration
+- Real-time hand tracking with MediaPipe Tasks (HandLandmarker, VIDEO mode).
+- Cursor movement via the left hand's index finger, with smoothing.
+- Right-hand gestures: pinch thumb+index for left-click, thumb+middle for
+  right-click, quick double-pinch for double-click, and pinch-and-hold to
+  drag-and-drop.
+- Floating, frameless picture-in-picture window that stays on top.
+- Four preset sizes plus freeform edge resizing; double-click to cycle sizes.
+- Suppresses MediaPipe/TFLite noise so the console stays clean.
+- One-click launchers (`start.bat` / `start.ps1`) that set up Python 3.11,
+  a virtual environment, dependencies, and the hand landmark model
+  automatically.
 
----
+## Architecture
 
-## Quick Start
+```
++---------------------+      +------------------------+      +----------+
+|  Webcam (1280x720)  | -->  |  modern_app.py         |      |          |
+|  OpenCV capture     |      |  PyQt5 PiP overlay     | -->  |  Mouse   |
++---------------------+      |  (FloatingWindow)      |      |  events  |
+                             +------------------------+      +----------+
+                                       | process_frame
+                                       v
+                             +------------------------+
+                             |  gesture_engine.py     |
+                             |  GestureEngine         |
+                             |  - MediaPipe Tasks     |
+                             |  - left/right hand     |
+                             |  - pinch detection     |
+                             +------------------------+
+                                       |
+                                       v
+                             +------------------------+
+                             |  pynput Controller     |
+                             |  move / click / drag   |
+                             +------------------------+
+```
 
-**The easiest way to start AirNav:**
+`launcher.py` resolves the project's Python (preferring a local `.venv`) and
+starts `modern_app.py`. `start.ps1` orchestrates the whole setup (Python,
+venv, dependencies, model download) and then launches the app; `start.bat` is
+a compatibility wrapper that invokes `start.ps1`.
 
-**Option 1: PowerShell (Recommended for best visuals)**
+## Quickstart
+
+### Windows
+
 ```powershell
 .\start.ps1
 ```
-- Beautiful ANSI Shadow ASCII art with colors
-- Proper UTF-8 character display
-- Enhanced visual experience
 
-**Option 2: Batch File (Maximum compatibility)**
-```cmd
-start.bat
-```
-- Or double-click `start.bat` in Windows Explorer
-- Works in all terminals
+or double-click `start.bat`. The launcher finds or installs Python 3.11,
+creates `.venv`, installs `requirements.txt`, downloads the hand landmark
+model into `models/` if missing, and starts the app.
 
-Both launchers will:
-- Check and install dependencies automatically
-- Launch the modern PiP window interface with gesture control
+### Manual setup (any OS)
 
-**Manual start (alternative):**
+```bash
+git clone https://github.com/vishnuskandha/AirNav.git
+cd AirNav
+python -m venv .venv
+.\.venv\Scripts\activate      # Windows
+# source .venv/bin/activate   # Linux/macOS
 
-```powershell
+pip install -r requirements.txt
 python modern_app.py
 ```
 
-The modern app shows a floating Picture-in-Picture window with real-time gesture control.
+Requirements: Python 3.9+ (3.11 recommended), a working webcam, and
+`models/hand_landmarker.task` in the `models/` folder (the launcher
+downloads it automatically).
 
----
+## Gestures
 
-## Installation
+| Gesture | Action |
+| --- | --- |
+| Left hand, index finger | Move the cursor |
+| Right hand, pinch thumb + index (quick) | Left-click |
+| Right hand, quick double pinch | Double-click |
+| Right hand, pinch thumb + index (hold ~0.8 s) | Start drag; release to drop |
+| Right hand, pinch thumb + middle | Right-click |
 
-### Prerequisites
-
-- **Python 3.7+** ([download](https://www.python.org/downloads/))
-- **Webcam** (built-in or external USB camera)
-- **Windows 10/11** (or Linux/macOS with Python + pip)
-
-### Step 1: Clone the repository
-
-```powershell
-git clone https://github.com/vishnuskandha/AirNav.git
-cd AirNav
-```
-
-### Step 2: Create a Python virtual environment (recommended)
-
-A virtual environment isolates dependencies and prevents conflicts with other Python projects.
-
-**Windows (PowerShell):**
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-**Windows (Command Prompt):**
-```cmd
-python -m venv venv
-venv\Scripts\activate.bat
-```
-
-**Linux/macOS:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-You should see `(venv)` prefix in your terminal.
-
-### Step 3: Install dependencies
-
-```powershell
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### Dependency Installation Guide
-
-**Core dependencies** (always required):
-- `opencv-python` — for webcam input and face/hand detection
-- `mediapipe` — for hand gesture recognition
-- `numpy` — for numerical computations
-- `pynput` — for mouse/keyboard control
-
-**Face recognition** (optional, recommended):
-- `face-recognition` — for facial authentication
-- `dlib` — face detection algorithm (comes as pre-built binary on Windows)
-
-### Troubleshooting Installation
-
-**Issue: `dlib` build fails on Windows**
-
-**Solution 1: Use pre-built dlib-binary** (recommended)
-```powershell
-pip install dlib-binary face-recognition
-```
-
-**Solution 2: Install Visual C++ Build Tools** (if you prefer building dlib)
-1. Download: https://visualstudio.microsoft.com/downloads/
-2. Choose **Desktop development with C++** option
-3. Restart your terminal
-4. Run: `pip install -r requirements.txt`
-
-**Solution 3: Skip face recognition** (system falls back to simple detection)
-- Comment out `face-recognition` line in `requirements.txt`
-- Face unlock will use OpenCV Haar Cascade (less accurate but works)
-
-**Issue: `pip install` is slow or times out**
-
-```powershell
-# Use a faster package index
-pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
-```
-
-**Issue: Permission denied (Linux/macOS)**
-
-```bash
-# Use --user flag
-pip install --user -r requirements.txt
-```
-
-### Verify Installation
-
-Test that dependencies are installed correctly:
-
-```powershell
-python -c "import cv2, mediapipe, numpy, pynput; print('✓ All core dependencies installed')"
-```
-
-If this runs without errors, you're ready to proceed.
-
----
-
-## Usage
-
-### Quick Start (After Installation)
-
-1. **Enroll your face** (one-time setup):
-   ```powershell
-   python enroll_face.py
-   ```
-   - Enter your name (or press Enter for default)
-   - Position face in front of webcam
-   - Press **SPACE** to capture
-   - Your face will be saved to `known_faces.pkl`
-
-2. **Launch the app**:
-   ```powershell
-   python launcher.py
-   ```
-   - You'll see a face unlock window (authenticate with your face)
-   - After unlocking, the gesture control window will open
-   - Move your hand to control the cursor
-
-3. **Stop the app**:
-   - Focus the terminal window and press **`Ctrl+C`**
-
-### Running Multiple Times
-
-- **First-time users**: Run `enroll_face.py` once, then always use `launcher.py`
-- **Subsequent launches**: Just run `launcher.py` (no re-enrollment needed)
-- **New users**: Run `enroll_face.py` again with a different name (multiple faces are supported)
-
-### Add More Users
-
-```powershell
-python enroll_face.py
-```
-
-Repeat this for each person. All enrolled faces will be recognized by the launcher.
-
-### Tips
-
-- Ensure good lighting when enrolling and unlocking (shadows affect recognition)
-- If authentication fails repeatedly, try re-enrolling with better lighting
-- On Windows, you may need to run as Administrator for full mouse control
-- The app is lightweight (~50-100MB memory during execution)
-
----
+In the PiP window: drag with the mouse to move it, pull an edge to resize,
+right-click for the context menu, double-click to cycle preset sizes. Stop the
+app with `Ctrl+C` in the terminal.
 
 ## Configuration
 
-Tuning is done by editing the Python files.
+Tuning is done in `gesture_engine.py`:
 
-**`face_unlock.py`**
-- `UNLOCK_THRESHOLD`: Face matching sensitivity (0.6 default; lower = stricter)
-- `CAMERA_INDEX`: Which camera to use (0 = default)
+- `SMOOTHING` — cursor smoothing factor (higher = smoother, slower).
+- `LEFT_CLICK_THRESHOLD`, `RIGHT_CLICK_THRESHOLD` — pinch sensitivity.
+- `DRAG_HOLD_TIME` — seconds to hold a pinch before a drag starts.
+- `click_delay` — double-click timing window.
+- `DPI_FACTOR` — cursor speed multiplier.
 
-**`mouse_gestures.py`**
-- `SCREEN_WIDTH`, `SCREEN_HEIGHT`: your monitor resolution
-- `SMOOTHING`: cursor smoothing factor (higher = smoother, slower)
-- `LEFT_CLICK_THRESHOLD`, `RIGHT_CLICK_THRESHOLD`: pinch sensitivity
-- `DRAG_HOLD_TIME`: seconds holding pinch before drag starts
+Preset window sizes live in `modern_app.py` (`SIZES`).
 
-Adjust values and restart the app to apply.
+## Repository layout
 
----
-
-## First-Time Setup Checklist
-
-Follow this checklist after cloning the repo:
-
-- [ ] **Python installed** — verify with `python --version` (3.7+)
-- [ ] **Git clone downloaded** — repo files are on your machine
-- [ ] **Virtual environment created** — `python -m venv venv` + activation
-- [ ] **Dependencies installed** — `pip install -r requirements.txt` (no errors)
-- [ ] **Webcam working** — test with Windows Camera or other app
-- [ ] **Face enrolled** — `python enroll_face.py` completed, `known_faces.pkl` created
-- [ ] **Launcher runs** — `python launcher.py` starts without crashing
-- [ ] **Face unlocks** — you can see your face detected and authenticated
-- [ ] **Gesture controls active** — hand landmarks are visible in the window
-
-**All checked?** You're ready to use AirNav! 🎉
-
----
-
-## Face Unlock Setup
-
-### First-time enrollment
-
-1. Run the enrollment script:
-   ```powershell
-   python enroll_face.py
-   ```
-
-2. Enter your name when prompted (or press Enter for default "User")
-
-3. Position your face in the camera frame
-
-4. Press **SPACE** to capture your face (ESC to cancel)
-
-5. Your face encoding will be saved to `known_faces.pkl`
-
-### Adding multiple users
-
-Run `enroll_face.py` multiple times with different names. All enrolled faces will be recognized.
-
-### Re-enrolling
-
-Delete `known_faces.pkl` and run `enroll_face.py` again to start fresh.
-
----
-
-## Gesture reference
-
-- Left hand: move the index finger to move the cursor
-- Right hand: pinch thumb+index for left-click, thumb+middle for right-click
-- Hold pinch (about 1 second) to start drag; release to drop
-
----
-
-## Troubleshooting
-
-### Installation Issues
-
-| Issue | Solution |
-|-------|----------|
-| `pip: command not found` | Python not installed or not in PATH. [Download Python](https://www.python.org/downloads/) and check "Add Python to PATH" during installation |
-| `dlib build error` | Run `pip install dlib-binary` instead of building from source |
-| `ModuleNotFoundError: No module named 'cv2'` | Activate virtual environment: `.\venv\Scripts\Activate.ps1`, then run `pip install -r requirements.txt` |
-| `Permission denied` | Run terminal as Administrator (Windows) or use `pip install --user` (Linux/macOS) |
-
-### Runtime Issues
-
-| Issue | Solution |
-|-------|----------|
-| **No webcam detected** | Check camera is connected + not used by other apps (Discord, Zoom, etc.) |
-| **Face unlock window closes immediately** | `known_faces.pkl` missing. Run `python enroll_face.py` first |
-| **Authentication fails with correct face** | Lighting issue. Try re-enrolling in brighter environment. Or increase `UNLOCK_THRESHOLD` in `face_unlock.py` |
-| **Slow performance / lag** | Close other apps, reduce `SMOOTHING` value in `mouse_gestures.py`, or use a faster computer |
-| **Cursor jitter** | Increase `SMOOTHING` value in `mouse_gestures.py` (default 0.3 → try 0.5) |
-| **Clicks not registering** | Adjust `LEFT_CLICK_THRESHOLD` and `RIGHT_CLICK_THRESHOLD` in `mouse_gestures.py` |
-| **Console shows many warnings** | Normal on first run. Warnings are suppressed after initialization. |
-
-### Platform-Specific Issues
-
-**Windows:**
-- If mouse control doesn't work: Run terminal as Administrator
-- If `pynput` fails: Install from: `pip install pynput==1.7.6`
-
-**Linux:**
-- If camera doesn't work: `sudo apt install python3-dev` (for dependencies)
-- Face recognition: `sudo apt install libopenblas-dev liblapack-dev libblas-dev gfortran`
-
-**macOS:**
-- If Homebrew is installed: `brew install openblas lapack blas gfortran`
-- Face recognition: May require Xcode Command Line Tools
-
-### Getting Help
-
-If issues persist:
-1. Check that webcam works in other apps (Windows Camera, OBS, etc.)
-2. Verify Python version: `python --version` (should be 3.7+)
-3. Verify dependencies: `pip list | findstr /E "(opencv|mediapipe|numpy|pynput|face-recognition)"`
-4. Check `known_faces.pkl` exists: `ls known_faces.pkl` (if missing, run `enroll_face.py`)
-5. Open an issue on GitHub with:
-   - Python version
-   - OS (Windows 10/11, Ubuntu 20.04, etc.)
-   - Error message/traceback
-   - Steps to reproduce
-
----
+```
+modern_app.py          PyQt5 picture-in-picture overlay + video thread
+gesture_engine.py      Hand tracking, gesture detection, mouse control
+launcher.py            Lightweight entrypoint that starts modern_app.py
+start.ps1              One-click launcher (Python 3.11 + venv + setup)
+start.bat              Batch wrapper for start.ps1
+models/hand_landmarker.task   MediaPipe hand landmark model (auto-downloaded)
+requirements.txt       Pinned Python dependencies
+```
 
 ## Contributing
 
-Contributions are welcome. For small fixes, open a PR. For larger features, open an issue first to discuss the design.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development setup, code style, and testing checklist.
 
-Please respect the license included in the repository.
+## Security
 
----
+See [SECURITY.md](SECURITY.md).
 
-## License & Contact
+## License
 
-© 2025 VishnuSkandha
-
-This project is provided for personal and educational use. See `LICENSE.md` for details.
-
-Contact: @vishnuskandha
-
----
-
-If you'd like a different tone (shorter, more tutorial-like, or a landing-page style README), tell me which style and I will adapt the structure and wording.
+MIT License. See [LICENSE.md](LICENSE.md). Copyright (c) 2025 Vishnu Skandha.
