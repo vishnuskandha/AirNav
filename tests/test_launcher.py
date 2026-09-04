@@ -18,7 +18,9 @@ def test_run_app_propagates_process_failures() -> None:
 
 
 def test_main_returns_application_exit_code() -> None:
-    with patch("launcher.venv_python.exists", return_value=False), patch(
+    missing_venv = Path(".missing-venv-python.exe")
+
+    with patch("launcher.venv_python", missing_venv), patch(
         "launcher.run_app",
         side_effect=subprocess.CalledProcessError(9, ["python", "modern_app.py"]),
     ):
@@ -26,7 +28,9 @@ def test_main_returns_application_exit_code() -> None:
 
 
 def test_main_returns_interrupt_code() -> None:
-    with patch("launcher.venv_python.exists", return_value=False), patch(
+    missing_venv = Path(".missing-venv-python.exe")
+
+    with patch("launcher.venv_python", missing_venv), patch(
         "launcher.run_app", side_effect=KeyboardInterrupt
     ):
         assert launcher.main() == 130
