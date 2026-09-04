@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,4 +26,4 @@ jobs:
         run: python -m py_compile gesture_engine.py launcher.py modern_app.py
 
       - name: Run tests
-        run: python -m pytest -q || echo "No test suite found; skipping."
+        run: python -m pytest -q tests
